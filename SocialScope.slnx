@@ -5,4 +5,7 @@
     <Project Path="src/SocialScope.Domain/SocialScope.Domain.csproj" Id="472c4762-b507-4e1c-9b16-874f0f3a256b" />
     <Project Path="src/SocialScope.Infrastructure/SocialScope.Infrastructure.csproj" Id="edd4a70a-d7a8-428c-9486-c8fdee06328a" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SocialScope.UnitTests/SocialScope.UnitTests.csproj" />
+  </Folder>
 </Solution>
