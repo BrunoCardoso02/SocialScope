@@ -43,4 +43,9 @@ public sealed class User
             DateTimeOffset.UtcNow,
             null);
     }
+
+    public void RegisterLogin()
+    {
+        LastLoginAt = DateTimeOffset.UtcNow;
+    }
 }
