@@ -1,5 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SocialScope.Application.Exceptions;
+using SocialScope.Application.Features.Auth.GetCurrentUser;
 using SocialScope.Application.Features.Auth.Login;
 using SocialScope.Application.Features.Auth.Register;
 using SocialScope.Domain.Exceptions;
@@ -12,13 +15,16 @@ public sealed class AuthController : ControllerBase
 {
     private readonly RegisterUserCommandHandler _registerUserCommandHandler;
     private readonly LoginCommandHandler _loginCommandHandler;
+    private readonly GetCurrentUserQueryHandler _getCurrentUserQueryHandler;
 
     public AuthController(
         RegisterUserCommandHandler registerUserCommandHandler,
-        LoginCommandHandler loginCommandHandler)
+        LoginCommandHandler loginCommandHandler,
+        GetCurrentUserQueryHandler getCurrentUserQueryHandler)
     {
         _registerUserCommandHandler = registerUserCommandHandler;
         _loginCommandHandler = loginCommandHandler;
+        _getCurrentUserQueryHandler = getCurrentUserQueryHandler;
     }
 
     [HttpPost("register")]
@@ -45,6 +51,15 @@ public sealed class AuthController : ControllerBase
             return BadRequest(new ProblemDetails
             {
                 Title = "E-mail inválido",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        catch (InvalidNameException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Nome inválido",
                 Detail = ex.Message,
                 Status = StatusCodes.Status400BadRequest
             });
@@ -77,6 +92,32 @@ public sealed class AuthController : ControllerBase
                 Title = "E-mail inválido",
                 Detail = ex.Message,
                 Status = StatusCodes.Status400BadRequest
+            });
+        }
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<ActionResult<GetCurrentUserResponse>> Me(CancellationToken cancellationToken)
+    {
+        var subject = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(subject, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var response = await _getCurrentUserQueryHandler.Handle(new GetCurrentUserQuery(userId), cancellationToken);
+            return Ok(response);
+        }
+        catch (UserNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Usuário não encontrado",
+                Detail = ex.Message,
+                Status = StatusCodes.Status404NotFound
             });
         }
     }

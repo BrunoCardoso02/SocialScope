@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SocialScope.Application.Features.Auth.GetCurrentUser;
 using SocialScope.Application.Features.Auth.Login;
 using SocialScope.Application.Features.Auth.Register;
 
@@ -10,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddScoped<RegisterUserCommandHandler>();
         services.AddScoped<LoginCommandHandler>();
+        services.AddScoped<GetCurrentUserQueryHandler>();
 
         return services;
     }

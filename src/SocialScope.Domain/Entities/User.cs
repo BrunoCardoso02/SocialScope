@@ -1,3 +1,4 @@
+using SocialScope.Domain.Exceptions;
 using SocialScope.Domain.ValueObjects;
 
 namespace SocialScope.Domain.Entities;
@@ -34,11 +35,16 @@ public sealed class User
 
     public static User Create(string email, string passwordHash, string name)
     {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new InvalidNameException();
+        }
+
         return new User(
             Guid.NewGuid(),
             Email.Create(email),
             passwordHash,
-            name,
+            name.Trim(),
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             null);
