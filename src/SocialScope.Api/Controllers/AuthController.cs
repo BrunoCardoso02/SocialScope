@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using SocialScope.Application.Exceptions;
 using SocialScope.Application.Features.Auth.GetCurrentUser;
 using SocialScope.Application.Features.Auth.Login;
+using SocialScope.Application.Features.Auth.Logout;
+using SocialScope.Application.Features.Auth.Refresh;
 using SocialScope.Application.Features.Auth.Register;
 using SocialScope.Domain.Exceptions;
 
@@ -16,15 +18,21 @@ public sealed class AuthController : ControllerBase
     private readonly RegisterUserCommandHandler _registerUserCommandHandler;
     private readonly LoginCommandHandler _loginCommandHandler;
     private readonly GetCurrentUserQueryHandler _getCurrentUserQueryHandler;
+    private readonly RefreshTokenCommandHandler _refreshTokenCommandHandler;
+    private readonly LogoutCommandHandler _logoutCommandHandler;
 
     public AuthController(
         RegisterUserCommandHandler registerUserCommandHandler,
         LoginCommandHandler loginCommandHandler,
-        GetCurrentUserQueryHandler getCurrentUserQueryHandler)
+        GetCurrentUserQueryHandler getCurrentUserQueryHandler,
+        RefreshTokenCommandHandler refreshTokenCommandHandler,
+        LogoutCommandHandler logoutCommandHandler)
     {
         _registerUserCommandHandler = registerUserCommandHandler;
         _loginCommandHandler = loginCommandHandler;
         _getCurrentUserQueryHandler = getCurrentUserQueryHandler;
+        _refreshTokenCommandHandler = refreshTokenCommandHandler;
+        _logoutCommandHandler = logoutCommandHandler;
     }
 
     [HttpPost("register")]
@@ -94,6 +102,36 @@ public sealed class AuthController : ControllerBase
                 Status = StatusCodes.Status400BadRequest
             });
         }
+    }
+
+    [HttpPost("refresh")]
+    public async Task<ActionResult<RefreshTokenResponse>> Refresh(
+        [FromBody] RefreshTokenCommand command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _refreshTokenCommandHandler.Handle(command, cancellationToken);
+            return Ok(response);
+        }
+        catch (InvalidRefreshTokenException ex)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Refresh token inválido",
+                Detail = ex.Message,
+                Status = StatusCodes.Status401Unauthorized
+            });
+        }
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(
+        [FromBody] LogoutCommand command,
+        CancellationToken cancellationToken)
+    {
+        await _logoutCommandHandler.Handle(command, cancellationToken);
+        return NoContent();
     }
 
     [Authorize]

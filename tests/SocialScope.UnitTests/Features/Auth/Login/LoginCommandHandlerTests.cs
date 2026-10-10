@@ -30,10 +30,20 @@ public class LoginCommandHandlerTests
             .Setup(g => g.Generate(user))
             .Returns(("token-fake", expiresAt));
 
+        var refreshExpiresAt = DateTimeOffset.UtcNow.AddDays(7);
+        var refreshTokenGeneratorMock = new Mock<IRefreshTokenGenerator>();
+        refreshTokenGeneratorMock
+            .Setup(g => g.Generate())
+            .Returns(new GeneratedRefreshToken("refresh-fake", "refresh-hash-fake", refreshExpiresAt));
+
+        var refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
+
         var handler = new LoginCommandHandler(
             userRepositoryMock.Object,
             passwordHasherMock.Object,
-            jwtTokenGeneratorMock.Object);
+            jwtTokenGeneratorMock.Object,
+            refreshTokenGeneratorMock.Object,
+            refreshTokenRepositoryMock.Object);
 
         var response = await handler.Handle(
             new LoginCommand("ana@email.com", "senha123"),
@@ -41,6 +51,13 @@ public class LoginCommandHandlerTests
 
         Assert.Equal("token-fake", response.AccessToken);
         Assert.Equal(expiresAt, response.ExpiresAt);
+        Assert.Equal("refresh-fake", response.RefreshToken);
+        Assert.Equal(refreshExpiresAt, response.RefreshTokenExpiresAt);
+        refreshTokenRepositoryMock.Verify(
+            r => r.AddRefreshTokenAsync(
+                It.Is<RefreshToken>(t => t.UserId == user.Id && t.TokenHash == "refresh-hash-fake"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
         userRepositoryMock.Verify(r => r.UpdateUserAsync(user, It.IsAny<CancellationToken>()), Times.Once);
         Assert.NotNull(user.LastLoginAt);
     }
@@ -56,7 +73,9 @@ public class LoginCommandHandlerTests
         var handler = new LoginCommandHandler(
             userRepositoryMock.Object,
             Mock.Of<IPasswordHasher>(),
-            Mock.Of<IJwtTokenGenerator>());
+            Mock.Of<IJwtTokenGenerator>(),
+            Mock.Of<IRefreshTokenGenerator>(),
+            Mock.Of<IRefreshTokenRepository>());
 
         await Assert.ThrowsAsync<InvalidCredentialsException>(
             () => handler.Handle(new LoginCommand("ana@email.com", "senha123"), CancellationToken.None));
@@ -80,7 +99,9 @@ public class LoginCommandHandlerTests
         var handler = new LoginCommandHandler(
             userRepositoryMock.Object,
             passwordHasherMock.Object,
-            Mock.Of<IJwtTokenGenerator>());
+            Mock.Of<IJwtTokenGenerator>(),
+            Mock.Of<IRefreshTokenGenerator>(),
+            Mock.Of<IRefreshTokenRepository>());
 
         await Assert.ThrowsAsync<InvalidCredentialsException>(
             () => handler.Handle(new LoginCommand("ana@email.com", "senha-errada"), CancellationToken.None));
